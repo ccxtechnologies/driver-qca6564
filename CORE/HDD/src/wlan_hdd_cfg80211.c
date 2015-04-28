@@ -3757,7 +3757,7 @@ nla_put_failure:
     return -EINVAL;
 }
 
-static int wlan_hdd_cfg80211_exttdls_callback(tANI_U8* mac,
+static int wlan_hdd_cfg80211_exttdls_callback(const tANI_U8* mac,
                                               tANI_S32 state,
                                               tANI_S32 reason,
                                               void *ctx)
@@ -4815,10 +4815,10 @@ int wlan_hdd_cfg80211_alloc_new_beacon(hdd_adapter_t *pAdapter,
 
 }
 
-v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(v_U8_t *pIes, int length, v_U8_t eid)
+v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(const v_U8_t *pIes, int length, v_U8_t eid)
 {
     int left = length;
-    v_U8_t *ptr = pIes;
+    v_U8_t *ptr = (v_U8_t *)pIes;
     v_U8_t elem_id,elem_len;
 
     while(left >= 2)
@@ -7315,7 +7315,10 @@ static int wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
 
 #ifdef FEATURE_WLAN_TDLS
 static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
-          struct net_device *dev, u8 *mac, bool update, tCsrStaParams *StaParams)
+                                     struct net_device *dev,
+                                     const u8 *mac,
+                                     bool update,
+                                     tCsrStaParams *StaParams)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
@@ -7511,10 +7514,17 @@ static bool wlan_hdd_is_duplicate_channel(tANI_U8 *arr,
 }
 #endif /* FEATURE_WLAN_TDLS */
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)) || defined(WITH_BACKPORTS)
+static int wlan_hdd_change_station(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         const u8 *mac,
+                                         struct station_parameters *params)
+#else
 static int wlan_hdd_change_station(struct wiphy *wiphy,
                                          struct net_device *dev,
                                          u8 *mac,
                                          struct station_parameters *params)
+#endif
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
@@ -10299,13 +10309,12 @@ static int wlan_hdd_cfg80211_set_cipher( hdd_adapter_t *pAdapter,
  * FUNCTION: wlan_hdd_cfg80211_set_ie
  * This function is used to parse WPA/RSN IE's.
  */
-int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
-                              u8 *ie,
-                              size_t ie_len
-                              )
+int wlan_hdd_cfg80211_set_ie(hdd_adapter_t *pAdapter,
+                             const u8 *ie,
+                             size_t ie_len)
 {
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-    u8 *genie = ie;
+    const u8 *genie = ie;
     v_U16_t remLen = ie_len;
 #ifdef FEATURE_WLAN_WAPI
     v_U32_t akmsuite[MAX_NUM_AKM_SUITES];
@@ -10562,7 +10571,7 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
  * Parse the received IE to find the WPA IE
  *
  */
-static bool hdd_isWPAIEPresent(u8 *ie, u8 ie_len)
+static bool hdd_isWPAIEPresent(const u8 *ie, u8 ie_len)
 {
     v_U8_t eLen = 0;
     v_U16_t remLen = ie_len;
@@ -10598,9 +10607,9 @@ static bool hdd_isWPAIEPresent(u8 *ie, u8 ie_len)
  * This function is used to initialize the security
  * parameters during connect operation.
  */
-int wlan_hdd_cfg80211_set_privacy( hdd_adapter_t *pAdapter,
-                                   struct cfg80211_connect_params *req
-                                   )
+int wlan_hdd_cfg80211_set_privacy(hdd_adapter_t *pAdapter,
+                                  struct cfg80211_connect_params *req
+                                  )
 {
     int status = 0;
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
@@ -10689,10 +10698,9 @@ int wlan_hdd_cfg80211_set_privacy( hdd_adapter_t *pAdapter,
     if (req->ie_len)
     {
         status = wlan_hdd_cfg80211_set_ie(pAdapter, req->ie, req->ie_len);
-        if ( 0 > status)
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to parse the WPA/RSN IE",
-                    __func__);
+        if (0 > status) {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                   FL("failed to parse the WPA/RSN IE"));
             return status;
         }
     }
@@ -11195,24 +11203,24 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
     vos_mem_zero(&pHddStaCtx->ibss_enc_key, sizeof(tCsrRoamSetKey));
     pHddStaCtx->ibss_enc_key_installed = 0;
 
-    if (params->ie_len && ( NULL != params->ie) )
+    if (params->ie_len && (NULL != params->ie))
     {
-        if (wlan_hdd_cfg80211_get_ie_ptr (params->ie,
-                            params->ie_len, WLAN_EID_RSN ))
+        if (wlan_hdd_cfg80211_get_ie_ptr(params->ie,
+                            params->ie_len, WLAN_EID_RSN))
         {
             pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA2;
             encryptionType = eCSR_ENCRYPT_TYPE_AES;
         }
-        else if ( hdd_isWPAIEPresent (params->ie, params->ie_len ))
+        else if (hdd_isWPAIEPresent(params->ie, params->ie_len))
         {
             tDot11fIEWPA dot11WPAIE;
             tHalHandle halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
             u8 *ie;
 
             memset(&dot11WPAIE, 0, sizeof(dot11WPAIE));
-            ie = wlan_hdd_cfg80211_get_ie_ptr (params->ie,
+            ie = wlan_hdd_cfg80211_get_ie_ptr(params->ie,
                                      params->ie_len, DOT11F_EID_WPA);
-            if ( NULL != ie )
+            if (NULL != ie)
             {
                 pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA;
                 // Unpack the WPA IE
@@ -11230,10 +11238,8 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
 
         status = wlan_hdd_cfg80211_set_ie(pAdapter, params->ie, params->ie_len);
 
-        if (0 > status)
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to parse WPA/RSN IE",
-                    __func__);
+        if (0 > status) {
+            hddLog(VOS_TRACE_LEVEL_ERROR, FL("failed to parse WPA/RSN IE"));
             return status;
         }
     }
@@ -11259,6 +11265,7 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
     pHddStaCtx->conn_info.ucEncryptionType                   = encryptionType;
     pWextState->roamProfile.EncryptionType.numEntries        = 1;
     pWextState->roamProfile.EncryptionType.encryptionType[0] = encryptionType;
+
     return status;
 }
 
@@ -11274,9 +11281,9 @@ static int __wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     tCsrRoamProfile          *pRoamProfile;
     int status;
-    bool alloc_bssid = VOS_FALSE;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    tSirMacAddr bssid;
 
     ENTER();
 
@@ -11345,6 +11352,7 @@ static int __wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
                    "%s:ccmCfgStInt faild for WNI_CFG_IBSS_AUTO_BSSID", __func__);
            return -EIO;
        }
+       vos_mem_copy((v_U8_t *)bssid, (v_U8_t *)params->bssid, sizeof(bssid));
     }
     else if(pHddCtx->cfg_ini->isCoalesingInIBSSAllowed == 0)
     {
@@ -11355,15 +11363,9 @@ static int __wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
                     "%s:ccmCfgStInt faild for WNI_CFG_IBSS_AUTO_BSSID", __func__);
             return -EIO;
         }
-        params->bssid = vos_mem_malloc(VOS_MAC_ADDR_SIZE);
-        if (!params->bssid) {
-            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Memory allocation failed"));
-            return -ENOMEM;
-        }
-        vos_mem_copy((v_U8_t *)params->bssid,
+        vos_mem_copy((v_U8_t *)bssid,
                      (v_U8_t *)&pHddCtx->cfg_ini->IbssBssid.bytes[0],
-                     VOS_MAC_ADDR_SIZE);
-        alloc_bssid = VOS_TRUE;
+                     sizeof(bssid));
     }
     if ((params->beacon_interval > CFG_BEACON_INTERVAL_MIN)
         && (params->beacon_interval <= CFG_BEACON_INTERVAL_MAX))
@@ -11431,10 +11433,10 @@ static int __wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
 
     /* Initialize security parameters */
     status = wlan_hdd_cfg80211_set_privacy_ibss(pAdapter, params);
-    if (status < 0)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to set security parameters",
-                __func__);
+
+    if (status < 0) {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("failed to set security parameters status: %d"), status);
         return status;
     }
 
@@ -11444,18 +11446,9 @@ static int __wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
             pHddStaCtx->conn_info.operationChannel);
 
     if (0 > status)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: connect failed", __func__);
-        return status;
-    }
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("connect failed status: %d"), status);
 
-    if (NULL != params->bssid &&
-        pHddCtx->cfg_ini->isCoalesingInIBSSAllowed == 0 &&
-        alloc_bssid == VOS_TRUE)
-    {
-        vos_mem_free(params->bssid);
-    }
-   return 0;
+    return status;
 }
 
 static int wlan_hdd_cfg80211_join_ibss(struct wiphy *wiphy,
@@ -11824,7 +11817,8 @@ static int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
 
 static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                                            struct net_device *dev,
-                                           u8* mac, struct station_info *sinfo)
+                                           const u8* mac,
+                                           struct station_info *sinfo)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
@@ -12337,9 +12331,17 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
        return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)) || defined(WITH_BACKPORTS)
 static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                                          struct net_device *dev,
-                                         u8* mac, struct station_info *sinfo)
+                                         const u8* mac,
+                                         struct station_info *sinfo)
+#else
+static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         u8* mac,
+                                         struct station_info *sinfo)
+#endif
 {
     int ret;
 
@@ -12585,8 +12587,13 @@ int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                          struct net_device *dev,
                                          struct station_del_parameters *param)
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)) || defined(WITH_BACKPORTS)
+int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
+                                  struct net_device *dev, const u8 *mac)
+#else
 int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                   struct net_device *dev, u8 *mac)
+#endif
 #endif
 {
     int ret;
@@ -12613,7 +12620,9 @@ int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
 }
 
 static int __wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
-          struct net_device *dev, u8 *mac, struct station_parameters *params)
+                                           struct net_device *dev,
+                                           const u8 *mac,
+                                           struct station_parameters *params)
 {
     int status = -EPERM;
 #ifdef FEATURE_WLAN_TDLS
@@ -12659,8 +12668,18 @@ static int __wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
     return status;
 }
 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)) || defined(WITH_BACKPORTS)
 static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
-          struct net_device *dev, u8 *mac, struct station_parameters *params)
+                                         struct net_device *dev,
+                                         const u8 *mac,
+                                         struct station_parameters *params)
+#else
+static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         u8 *mac,
+                                         struct station_parameters *params)
+#endif
 {
     int ret;
 
@@ -16294,8 +16313,8 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
      .set_txq_params = wlan_hdd_set_txq_params,
      .get_station = wlan_hdd_cfg80211_get_station,
      .set_power_mgmt = wlan_hdd_cfg80211_set_power_mgmt,
-     .del_station  = wlan_hdd_cfg80211_del_station,
-     .add_station  = wlan_hdd_cfg80211_add_station,
+     .del_station = wlan_hdd_cfg80211_del_station,
+     .add_station = wlan_hdd_cfg80211_add_station,
 #ifdef FEATURE_WLAN_LFR
      .set_pmksa = wlan_hdd_cfg80211_set_pmksa,
      .del_pmksa = wlan_hdd_cfg80211_del_pmksa,
