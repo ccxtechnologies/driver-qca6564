@@ -992,7 +992,7 @@ backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 					int approxlen,
 					int event_idx, gfp_t gfp)
 {
-	return cfg80211_vendor_event_alloc(wiphy, approxlen, event_idx, gfp);
+	return cfg80211_vendor_event_alloc(wiphy, wdev, approxlen, event_idx, gfp);
 }
 #define cfg80211_vendor_event_alloc backported_cfg80211_vendor_event_alloc
 #endif

@@ -2027,6 +2027,8 @@ static void hdd_RoamIbssIndicationHandler( hdd_adapter_t *pAdapter,
                                            eRoamCmdStatus roamStatus,
                                            eCsrRoamResult roamResult )
 {
+   struct ieee80211_channel *chann;
+
    hddLog(VOS_TRACE_LEVEL_INFO, "%s: %s: id %d, status %d, result %d",
           __func__, pAdapter->dev->name, roamId, roamStatus, roamResult);
 
@@ -2082,7 +2084,13 @@ static void hdd_RoamIbssIndicationHandler( hdd_adapter_t *pAdapter,
                return;
             }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+            chann = ieee80211_get_channel(pAdapter->wdev.wiphy,
+                                          (int)pRoamInfo->pBssDesc->channelId);
+            cfg80211_ibss_joined(pAdapter->dev, bss->bssid, chann, GFP_KERNEL);
+#else
             cfg80211_ibss_joined(pAdapter->dev, bss->bssid, GFP_KERNEL);
+#endif
             cfg80211_put_bss(
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)) || defined(WITH_BACKPORTS)
                              pHddCtx->wiphy,
