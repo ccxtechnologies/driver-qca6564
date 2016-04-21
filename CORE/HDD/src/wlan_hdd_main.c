@@ -9929,7 +9929,11 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
 #if defined(MSM_PLATFORM) && !defined(WITH_BACKPORTS)
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s [SSR] send stop ap to supplicant",
                                                        __func__);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0))
             cfg80211_ap_stopped(pAdapter->dev, GFP_KERNEL);
+#else
+            nl80211_send_ap_stopped(pAdapter->dev->ieee80211_ptr);
+#endif
 #else
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s [SSR] send restart supplicant",
                                                        __func__);
