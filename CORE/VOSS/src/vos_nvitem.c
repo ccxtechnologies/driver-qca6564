@@ -53,6 +53,10 @@
 #include "regdomain.h"
 #include "regdomain_common.h"
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,0,0))
+#include <../net/wireless/reg.h>
+#endif
+
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0)) && !defined(WITH_BACKPORTS)
 #define IEEE80211_CHAN_NO_80MHZ		1<<7
 #endif
