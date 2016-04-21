@@ -168,6 +168,10 @@ typedef unsigned long TQUEUE_ARG;
 #define ATH_SYSCTL_PROC_DOSTRING(ctl, write, filp, buffer, lenp, ppos) \
     proc_dostring(ctl, write, filp, buffer, lenp, ppos)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+typedef struct ctl_table ctl_table;
+#endif
+
 /*
  * Byte Order stuff
  */
