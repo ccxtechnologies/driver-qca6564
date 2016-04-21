@@ -8226,7 +8226,11 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
    /*
     * cfg80211 initialization and registration....
     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
+   pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ), name, NET_NAME_UNKNOWN, ether_setup, NUM_TX_QUEUES);
+#else
    pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ), name, ether_setup, NUM_TX_QUEUES);
+#endif
 
    if(pWlanDev != NULL)
    {
@@ -9929,10 +9933,10 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
 #if defined(MSM_PLATFORM) && !defined(WITH_BACKPORTS)
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s [SSR] send stop ap to supplicant",
                                                        __func__);
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0))
-            cfg80211_ap_stopped(pAdapter->dev, GFP_KERNEL);
-#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0))
             nl80211_send_ap_stopped(pAdapter->dev->ieee80211_ptr);
+#else
+            cfg80211_ap_stopped(pAdapter->dev, GFP_KERNEL);
 #endif
 #else
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s [SSR] send restart supplicant",

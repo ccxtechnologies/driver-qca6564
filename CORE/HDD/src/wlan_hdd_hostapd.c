@@ -5493,7 +5493,11 @@ hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAd
 
    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: iface_name = %s", __func__, iface_name);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
+   pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t), iface_name, NET_NAME_UNKNOWN, ether_setup, NUM_TX_QUEUES);
+#else
    pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t), iface_name, ether_setup, NUM_TX_QUEUES);
+#endif
 
     if (pWlanHostapdDev != NULL)
     {
