@@ -8234,7 +8234,6 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
 
    if(pWlanDev != NULL)
    {
-
       //Save the pointer to the net_device in the HDD adapter
       pAdapter = (hdd_adapter_t*) netdev_priv( pWlanDev );
 
@@ -8244,43 +8243,11 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       pAdapter->pHddCtx = pHddCtx;
       pAdapter->magic = WLAN_HDD_ADAPTER_MAGIC;
 
-      init_completion(&pAdapter->session_open_comp_var);
-      init_completion(&pAdapter->session_close_comp_var);
-      init_completion(&pAdapter->disconnect_comp_var);
-      init_completion(&pAdapter->linkup_event_var);
-      init_completion(&pAdapter->cancel_rem_on_chan_var);
-      init_completion(&pAdapter->rem_on_chan_ready_event);
-      init_completion(&pAdapter->offchannel_tx_event);
-      init_completion(&pAdapter->tx_action_cnf_event);
-#ifdef FEATURE_WLAN_TDLS
-      init_completion(&pAdapter->tdls_add_station_comp);
-      init_completion(&pAdapter->tdls_del_station_comp);
-      init_completion(&pAdapter->tdls_mgmt_comp);
-      init_completion(&pAdapter->tdls_link_establish_req_comp);
-#endif
-
-      init_completion(&pHddCtx->mc_sus_event_var);
-      init_completion(&pHddCtx->tx_sus_event_var);
-      init_completion(&pHddCtx->rx_sus_event_var);
-      init_completion(&pHddCtx->ready_to_suspend);
-      init_completion(&pAdapter->ula_complete);
-      init_completion(&pAdapter->change_country_code);
-
-#ifdef WLAN_FEATURE_EXTWOW_SUPPORT
-      init_completion(&pHddCtx->ready_to_extwow);
-#endif
-
-#ifdef FEATURE_WLAN_BATCH_SCAN
-      init_completion(&pAdapter->hdd_set_batch_scan_req_var);
-      init_completion(&pAdapter->hdd_get_batch_scan_req_var);
       pAdapter->pBatchScanRsp = NULL;
       pAdapter->numScanList = 0;
       pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
       pAdapter->prev_batch_id = 0;
       mutex_init(&pAdapter->hdd_batch_scan_lock);
-#endif
-      init_completion(&pAdapter->scan_info.scan_req_completion_event);
-      init_completion(&pAdapter->scan_info.abortscan_event_var);
 
       vos_event_init(&pAdapter->scan_info.scan_finished_event);
       pAdapter->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
@@ -9018,6 +8985,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
             pAdapter->wdev.iftype = NL80211_IFTYPE_P2P_CLIENT;
 
          pAdapter->device_mode = session_type;
+         hdd_initialize_adapter_common(pAdapter);
 
          status = hdd_init_station_mode( pAdapter );
          if( VOS_STATUS_SUCCESS != status )
@@ -9089,6 +9057,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
                                   NL80211_IFTYPE_P2P_GO;
          pAdapter->device_mode = session_type;
 
+         hdd_initialize_adapter_common(pAdapter);
          status = hdd_init_ap_mode(pAdapter);
          if( VOS_STATUS_SUCCESS != status )
             goto err_free_netdev;
@@ -9163,6 +9132,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          pAdapter->device_mode = session_type;
          status = hdd_register_interface( pAdapter, rtnl_held );
 
+         hdd_initialize_adapter_common(pAdapter);
          hdd_init_tx_rx( pAdapter );
 
          //Stop the Interface TX queue.
@@ -11739,6 +11709,13 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    init_completion(&pHddCtx->full_pwr_comp_var);
    init_completion(&pHddCtx->standby_comp_var);
    init_completion(&pHddCtx->req_bmps_comp_var);
+   init_completion(&pHddCtx->mc_sus_event_var);
+   init_completion(&pHddCtx->tx_sus_event_var);
+   init_completion(&pHddCtx->rx_sus_event_var);
+   init_completion(&pHddCtx->ready_to_suspend);
+#ifdef WLAN_FEATURE_EXTWOW_SUPPORT
+   init_completion(&pHddCtx->ready_to_extwow);
+#endif
 
    spin_lock_init(&pHddCtx->schedScan_lock);
 
@@ -14504,6 +14481,45 @@ void wlan_hdd_start_sap(hdd_adapter_t *ap_adapter)
     return;
 }
 #endif
+
+/**
+ * hdd_initialize_adapter_common() - initialize completion variables
+ * @adapter: pointer to hdd_adapter_t
+ *
+ * Return: none
+ */
+void hdd_initialize_adapter_common(hdd_adapter_t *adapter)
+{
+	if (NULL == adapter) {
+		hddLog(VOS_TRACE_LEVEL_ERROR, "%s: adapter is NULL ", __func__);
+		return;
+	}
+	init_completion(&adapter->session_open_comp_var);
+	init_completion(&adapter->session_close_comp_var);
+	init_completion(&adapter->disconnect_comp_var);
+	init_completion(&adapter->linkup_event_var);
+	init_completion(&adapter->cancel_rem_on_chan_var);
+	init_completion(&adapter->rem_on_chan_ready_event);
+	init_completion(&adapter->offchannel_tx_event);
+	init_completion(&adapter->tx_action_cnf_event);
+#ifdef FEATURE_WLAN_TDLS
+	init_completion(&adapter->tdls_add_station_comp);
+	init_completion(&adapter->tdls_del_station_comp);
+	init_completion(&adapter->tdls_mgmt_comp);
+	init_completion(&adapter->tdls_link_establish_req_comp);
+#endif
+	init_completion(&adapter->ula_complete);
+	init_completion(&adapter->change_country_code);
+	init_completion(&adapter->scan_info.scan_req_completion_event);
+	init_completion(&adapter->scan_info.abortscan_event_var);
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+	init_completion(&adapter->hdd_set_batch_scan_req_var);
+	init_completion(&adapter->hdd_get_batch_scan_req_var);
+#endif
+
+	return;
+}
 
 //Register the module init/exit functions
 module_init(hdd_module_init);

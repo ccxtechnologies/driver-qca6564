@@ -1740,4 +1740,5 @@ static inline void wlan_hdd_stop_sap(hdd_adapter_t *ap_adapter) {}
 static inline void wlan_hdd_start_sap(hdd_adapter_t *ap_adapter) {}
 #endif
 bool wlan_hdd_get_fw_state(hdd_adapter_t *adapter);
+void hdd_initialize_adapter_common(hdd_adapter_t *adapter);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )
