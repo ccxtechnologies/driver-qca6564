@@ -992,7 +992,12 @@ backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 					int approxlen,
 					int event_idx, gfp_t gfp)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
 	return cfg80211_vendor_event_alloc(wiphy, wdev, approxlen, event_idx, gfp);
+#else
+	return cfg80211_vendor_event_alloc(wiphy, approxlen, event_idx, gfp);
+#endif
+
 }
 #define cfg80211_vendor_event_alloc backported_cfg80211_vendor_event_alloc
 #endif
