@@ -11038,6 +11038,9 @@ disconnected:
              FL("Set HDD connState to eConnectionState_NotConnected"));
     pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
 
+    /* indicate disconnected event to nl80211 */
+    cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED, NULL, 0,
+             GFP_KERNEL);
     return 0;
 }
 

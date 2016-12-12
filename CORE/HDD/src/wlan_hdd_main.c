@@ -9536,6 +9536,11 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                          "%s: wait on disconnect_comp_var failed",
                          __func__);
                }
+               else
+               {
+                 cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED,
+                         NULL, 0, GFP_KERNEL);
+               }
            }
            else
            {
