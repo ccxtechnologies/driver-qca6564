@@ -1202,7 +1202,7 @@ TODO: MMC SDIO3.0 Setting should also be modified in ReInit() function when Powe
                 clock = device->host->f_max;
             }
 
-            printk(KERN_ERR "%s: Dumping clocks (%d,%d)\n", __func__, func->card->cis.max_dtr, device->host->f_max);
+            pr_info("%s: Dumping clocks (%d,%d)\n", __func__, func->card->cis.max_dtr, device->host->f_max);
 
 /*
 //          We don't need to set the clock explicitly on 8064/ADP platforms.
@@ -1513,7 +1513,7 @@ static A_STATUS hifEnableFunc(HIF_DEVICE *device, struct sdio_func *func)
                 sdio_release_host(func);
                 return A_ERROR;
             }
-            printk(KERN_ERR"AR6000: Set async interrupt delay clock as %d.\n", asyncintdelay);
+            pr_info("AR6000: Set async interrupt delay clock as %d.\n", asyncintdelay);
         }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)

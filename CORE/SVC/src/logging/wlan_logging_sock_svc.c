@@ -431,13 +431,13 @@ static int wlan_logging_thread(void *Arg)
 		  || gwlan_logging.exit));
 
 		if (ret_wait_status == -ERESTARTSYS) {
-			pr_err("%s: wait_event_interruptible returned -ERESTARTSYS",
+			pr_info("%s: wait_event_interruptible returned -ERESTARTSYS",
 				__func__);
 			break;
 		}
 
 		if (gwlan_logging.exit) {
-			pr_err("%s: Exiting the thread\n", __func__);
+			pr_info("%s: Exiting the thread\n", __func__);
 			break;
 		}
 
