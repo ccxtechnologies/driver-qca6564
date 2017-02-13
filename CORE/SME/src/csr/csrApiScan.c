@@ -6420,13 +6420,20 @@ eHalStatus csrScanFreeRequest(tpAniSirGlobal pMac, tCsrScanRequest *pReq)
 
 void csrScanCallCallback(tpAniSirGlobal pMac, tSmeCmd *pCommand, eCsrScanStatus scanStatus)
 {
-    if(pCommand->u.scanCmd.callback)
+    eHalStatus status;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
     {
-        pCommand->u.scanCmd.callback(pMac, pCommand->u.scanCmd.pContext,
-                                     pCommand->sessionId,
-                                     pCommand->u.scanCmd.scanID, scanStatus);
-    } else {
-        smsLog( pMac, LOG2, "%s:%d - Callback NULL!!!", __func__, __LINE__);
+        if(pCommand->u.scanCmd.callback)
+        {
+            pCommand->u.scanCmd.callback(pMac, pCommand->u.scanCmd.pContext,
+                                         pCommand->sessionId,
+                                         pCommand->u.scanCmd.scanID, scanStatus);
+        } else {
+            smsLog( pMac, LOG2, "%s:%d - Callback NULL!!!", __func__, __LINE__);
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
     }
 }
 
@@ -7126,6 +7133,7 @@ tANI_BOOLEAN csrScanRemoveFreshScanCommand(tpAniSirGlobal pMac, tANI_U8 sessionI
     tSmeCmd *pCommand;
     tDblLinkList localList;
     tDblLinkList *pCmdList;
+    eHalStatus status;
 
     vos_mem_zero(&localList, sizeof(tDblLinkList));
     if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
@@ -7178,15 +7186,21 @@ tANI_BOOLEAN csrScanRemoveFreshScanCommand(tpAniSirGlobal pMac, tANI_U8 sessionI
     while( (pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)) )
     {
         pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
-        if (pCommand->u.scanCmd.callback)
+
+        status = sme_AcquireGlobalLock( &pMac->sme );
+        if ( HAL_STATUS_SUCCESS( status ) )
         {
-            /* User scan request is pending,
+            if (pCommand->u.scanCmd.callback)
+            {
+                /* User scan request is pending,
                                  * send response with status eCSR_SCAN_ABORT*/
-            pCommand->u.scanCmd.callback(pMac,
-                     pCommand->u.scanCmd.pContext,
-                     sessionId,
-                     pCommand->u.scanCmd.scanID,
-                     eCSR_SCAN_ABORT);
+                pCommand->u.scanCmd.callback(pMac,
+                         pCommand->u.scanCmd.pContext,
+                         sessionId,
+                         pCommand->u.scanCmd.scanID,
+                         eCSR_SCAN_ABORT);
+            }
+            sme_ReleaseGlobalLock( &pMac->sme );
         }
         csrReleaseCommandScan( pMac, pCommand );
     }
@@ -8015,7 +8029,6 @@ eHalStatus csrProcessSetBGScanParam(tpAniSirGlobal pMac, tSmeCmd *pCommand)
     return (status);
 }
 
-
 eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
                                eCsrAbortReason reason)
 {
@@ -8035,6 +8048,8 @@ eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
         {
 
             pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+	    pCommand->u.scanCmd.callback = NULL;
+            pCommand->u.scanCmd.pContext = NULL;
             csrAbortCommand( pMac, pCommand, eANI_BOOLEAN_FALSE);
         }
         csrLLUnlock(&pMac->scan.scanCmdPendingList);
