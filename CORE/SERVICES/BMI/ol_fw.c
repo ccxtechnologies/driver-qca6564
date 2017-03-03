@@ -90,7 +90,7 @@ static struct ol_fw_files FW_FILES_QCA6174_FW_1_3 = {
 	"utfbd13.bin", "qsetup13.bin", "epping13.bin"};
 static struct ol_fw_files FW_FILES_QCA6174_FW_3_0 = {
 	"qwlan30.bin", "bdwlan30.bin", "otp30.bin", "utf30.bin",
-	"utfbd30.bin", "qsetup30.bin", "epping30.bin"};
+	"utfbd30.bin", "epping30.bin"};
 static struct ol_fw_files FW_FILES_DEFAULT = {
 	"qwlan.bin", "bdwlan.bin", "otp.bin", "utf.bin",
 	"utfbd.bin", "qsetup.bin", "epping.bin"};
