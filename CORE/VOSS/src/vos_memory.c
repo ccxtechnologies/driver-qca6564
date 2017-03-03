@@ -55,12 +55,9 @@
 #include "vos_trace.h"
 
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
-#ifdef CONFIG_CNSS
-#include <net/cnss.h>
-#else
-#include <wcnss_api.h>
+#include <net/cnss_prealloc.h>
 #endif
-#endif
+
 
 
 #ifdef MEMORY_DEBUG
@@ -207,16 +204,19 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
    if (!memory_dbug_flag)
    {
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
-      if (size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
-      {
-          v_VOID_t *pmem;
-          pmem = wcnss_prealloc_get(size);
-          if (NULL != pmem)
-              return pmem;
+   if (size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
+   {
+      v_VOID_t *pmem;
+      pmem = wcnss_prealloc_get(size);
+      if (NULL != pmem) {
+         memset(pmem, 0, size);
+         return pmem;
       }
+   }
 #endif
       return kmalloc(size, flags);
    }
+
 
    new_size = size + sizeof(struct s_vos_mem_struct) + 8;
 
@@ -317,8 +317,10 @@ v_VOID_t * vos_mem_malloc( v_SIZE_t size )
    if(size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
    {
        pmem = wcnss_prealloc_get(size);
-       if(NULL != pmem)
+       if(NULL != pmem) {
+           memset(pmem, 0, size);
            return pmem;
+       }
    }
 #endif
    return kmalloc(size, flags);
