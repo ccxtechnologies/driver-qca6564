@@ -918,9 +918,11 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		  __func__, STAId);
 	goto drop_pkt;
    }
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+   netif_trans_update(dev);
+#else
    dev->trans_start = jiffies;
-
+#endif
    return NETDEV_TX_OK;
 
 drop_pkt:
@@ -971,12 +973,18 @@ void hdd_tx_timeout(struct net_device *dev)
    struct netdev_queue *txq;
    int i = 0;
 
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-      "%s: Transmission timeout occurred", __func__);
-   //Getting here implies we disabled the TX queues for too long. Queues are
-   //disabled either because of disassociation or low resource scenarios. In
-   //case of disassociation it is ok to ignore this. But if associated, we have
-   //do possible recovery here
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+   hddLog(LOGE, FL("Transmission timeout occurred jiffies %lu"),jiffies);
+#else
+   hddLog(LOGE, FL("Transmission timeout occurred jiffies %lu trans_start %lu"),
+          jiffies, dev->trans_start);
+#endif
+   /*
+    * Getting here implies we disabled the TX queues for too long. Queues are
+    * disabled either because of disassociation or low resource scenarios. In
+    * case of disassociation it is ok to ignore this. But if associated, we have
+    * do possible recovery here.
+    */
 
    VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
               "num_bytes AC0: %d AC1: %d AC2: %d AC3: %d",
