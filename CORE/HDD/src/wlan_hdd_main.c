@@ -7846,6 +7846,29 @@ int hdd_mon_open (struct net_device *dev)
 
    return 0;
 }
+
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_cfg80211_cancel_scan() - HDD Cancel scan request in cfg80211
+
+  To be called when the interface is being closed.
+
+  \param  - pAdapter Pointer to hdd_adapter_t structure
+
+  --------------------------------------------------------------------------*/
+void hdd_cfg80211_cancel_scan (hdd_adapter_t *pAdapter)
+{
+   unsigned long flags;
+
+   spin_lock_irqsave(&hdd_context_lock, flags);
+   if (pAdapter->request) {
+      cfg80211_scan_done(pAdapter->request, true);
+      pAdapter->request = NULL;
+   }
+   spin_unlock_irqrestore(&hdd_context_lock, flags);
+}
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_stop() - HDD stop function
@@ -7888,6 +7911,10 @@ int hdd_stop (struct net_device *dev)
 
    /* Make sure the interface is marked as closed */
    clear_bit(DEVICE_IFACE_OPENED, &pAdapter->event_flags);
+
+   /* Cancel any pending scan request */
+   hdd_cfg80211_cancel_scan(pAdapter);
+
    hddLog(VOS_TRACE_LEVEL_INFO, "%s: Disabling OS Tx queues", __func__);
 
    /* Disable TX on the interface, after this hard_start_xmit() will not
