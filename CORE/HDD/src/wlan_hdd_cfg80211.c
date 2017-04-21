@@ -8460,11 +8460,8 @@ static struct cfg80211_bss* wlan_hdd_cfg80211_inform_bss(
                            WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
     if (bss == NULL) {
         rssi = (VOS_MIN ((pBssDesc->rssi + pBssDesc->sinr), 0))*100;
-        return (cfg80211_inform_bss(wiphy, chan,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-        CFG80211_BSS_FTYPE_BEACON,
-#endif
-        pBssDesc->bssId,
+
+        return (cfg80211_inform_bss(wiphy, chan, pBssDesc->bssId,
                 le64_to_cpu(*(__le64 *)pBssDesc->timeStamp),
                 pBssDesc->capabilityInfo,
                 pBssDesc->beaconInterval, ie, ie_length,
