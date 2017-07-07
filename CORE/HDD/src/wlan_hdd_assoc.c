@@ -894,9 +894,12 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
 #endif /* QCA_PKT_PROTO_TRACE */
 
     /* HDD has initiated disconnect, do not send disconnect indication
-     * to kernel as it will be handled by __cfg80211_disconnect.
+     * to kernel. Sending disconnected event to kernel for userspace
+     * initiated disconnect will be handled by diconnect handler call
+     * to cfg80211_disconnected
      */
-    if ( eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState )
+    if ((eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState) ||
+        (eConnectionState_NotConnected == pHddStaCtx->conn_info.connState))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                    FL(" HDD has initiated a disconnect, no need to send"
@@ -927,8 +930,29 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     /* indicate disconnected event to nl80211 */
     if(roamStatus != eCSR_ROAM_IBSS_LEAVE)
     {
-        /*During the WLAN uninitialization,supplicant is stopped before the
-            driver so not sending the status of the connection to supplicant*/
+        /* Only send indication to kernel if not initiated by kernel */
+        if (sendDisconInd) {
+            /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
+            if (eCSR_ROAM_LOSTLINK == roamStatus)
+            {
+               if (pRoamInfo->reasonCode ==
+                               eSIR_MAC_PEER_STA_REQ_LEAVING_BSS_REASON)
+                       pr_info(
+                       "wlan: disconnected due to poor signal, rssi is %d dB\n",
+                       pRoamInfo->rxRssi);
+               wlan_hdd_cfg80211_indicate_disconnect(dev, true,
+                                                     WLAN_REASON_UNSPECIFIED);
+            }
+            else
+               wlan_hdd_cfg80211_indicate_disconnect(dev, true,
+                                                     WLAN_REASON_UNSPECIFIED);
+
+            hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
+                   FL("sent disconnected event to nl80211, reason code %d"),
+                      (eCSR_ROAM_LOSTLINK == roamStatus) ?
+                      pRoamInfo->reasonCode : WLAN_REASON_UNSPECIFIED);
+        }
+
         if ((pHddCtx->isLoadInProgress != TRUE) &&
             (pHddCtx->isUnloadInProgress != TRUE))
         {

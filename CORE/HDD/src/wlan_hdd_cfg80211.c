@@ -6372,6 +6372,15 @@ static int wlan_hdd_cfg80211_add_beacon(struct wiphy *wiphy,
         hddLog(VOS_TRACE_LEVEL_DEBUG, FL("Reached max concurrent connections"));
         return -EINVAL;
     }
+    if (pAdapter->device_mode == WLAN_HDD_P2P_GO) {
+        hdd_adapter_t  *pP2pAdapter = NULL;
+        pP2pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE);
+        if (pP2pAdapter) {
+            hddLog(VOS_TRACE_LEVEL_DEBUG,
+                FL("cancel active p2p device ROC before GO starting"));
+            wlan_hdd_cancel_existing_remain_on_channel(pP2pAdapter);
+        }
+    }
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) ||
         (pAdapter->device_mode == WLAN_HDD_P2P_GO)) {
@@ -6433,6 +6442,15 @@ static int wlan_hdd_cfg80211_set_beacon(struct wiphy *wiphy,
     if (VOS_FTM_MODE == hdd_get_conparam()) {
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
         return -EINVAL;
+    }
+    if (pAdapter->device_mode == WLAN_HDD_P2P_GO) {
+        hdd_adapter_t  *pP2pAdapter = NULL;
+        pP2pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE);
+        if (pP2pAdapter) {
+            hddLog(VOS_TRACE_LEVEL_DEBUG,
+                FL("cancel active p2p device ROC before GO starting"));
+            wlan_hdd_cancel_existing_remain_on_channel(pP2pAdapter);
+        }
     }
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) ||
@@ -6672,6 +6690,15 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
         hddLog(VOS_TRACE_LEVEL_DEBUG, FL("Reached max concurrent connections"));
         return -EINVAL;
     }
+    if (pAdapter->device_mode == WLAN_HDD_P2P_GO) {
+        hdd_adapter_t  *pP2pAdapter = NULL;
+        pP2pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE);
+        if (pP2pAdapter) {
+            hddLog(VOS_TRACE_LEVEL_DEBUG,
+                FL("cancel active p2p device ROC before GO starting"));
+            wlan_hdd_cancel_existing_remain_on_channel(pP2pAdapter);
+        }
+    }
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
@@ -6755,6 +6782,15 @@ static int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
     if (!(pAdapter->device_mode == WLAN_HDD_SOFTAP ||
           pAdapter->device_mode == WLAN_HDD_P2P_GO)) {
         return -EOPNOTSUPP;
+    }
+    if (pAdapter->device_mode == WLAN_HDD_P2P_GO) {
+        hdd_adapter_t  *pP2pAdapter = NULL;
+        pP2pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE);
+        if (pP2pAdapter) {
+            hddLog(VOS_TRACE_LEVEL_DEBUG,
+                FL("cancel active p2p device ROC before GO starting"));
+            wlan_hdd_cancel_existing_remain_on_channel(pP2pAdapter);
+        }
     }
 
     old = pAdapter->sessionCtx.ap.beacon;
@@ -6888,7 +6924,8 @@ static int wlan_hdd_change_iface_to_sta_mode(struct net_device *ndev,
     wext->roamProfile.pAddIEScan = pAdapter->scan_info.scanAddIE.addIEdata;
     wext->roamProfile.nAddIEScanLength = pAdapter->scan_info.scanAddIE.length;
     EXIT();
-    return status;
+
+    return vos_status_to_os_return(status);
 }
 
 static int wlan_hdd_cfg80211_change_bss (struct wiphy *wiphy,
@@ -6978,9 +7015,9 @@ static int __wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
         switch (type) {
         case NL80211_IFTYPE_STATION:
         case NL80211_IFTYPE_P2P_CLIENT:
-           vstatus = wlan_hdd_change_iface_to_sta_mode(ndev, type);
-           if (vstatus != VOS_STATUS_SUCCESS)
-               return -EINVAL;
+           status = wlan_hdd_change_iface_to_sta_mode(ndev, type);
+           if (status != 0)
+               return status;
 
 #ifdef QCA_LL_TX_FLOW_CT
            if (pAdapter->tx_flow_timer_initialized == VOS_FALSE) {
@@ -7147,7 +7184,7 @@ static int __wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
        case NL80211_IFTYPE_P2P_CLIENT:
        case NL80211_IFTYPE_ADHOC:
           status = wlan_hdd_change_iface_to_sta_mode(ndev, type);
-          if (status != VOS_STATUS_SUCCESS)
+          if (status != 0)
               return status;
 
 #ifdef QCA_LL_TX_FLOW_CT
@@ -10967,16 +11004,21 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     }
 
 disconnected:
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-             FL("Set HDD connState to eConnectionState_NotConnected"));
-    pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
+    hdd_connSetConnectionState(pAdapter,
+                                eConnectionState_NotConnected);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
+    /* Sending disconnect event to userspace for kernel version < 3.11
+     * is handled by __cfg80211_disconnect call to __cfg80211_disconnected
+     */
+    hddLog(LOG1, FL("Send disconnected event to userspace"));
 
-    /* indicate disconnected event to nl80211 */
-    cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED, NULL, 0,
-             GFP_KERNEL);
+    wlan_hdd_cfg80211_indicate_disconnect(pAdapter->dev, false,
+                                          WLAN_REASON_UNSPECIFIED);
+#endif
+
+    EXIT();
     return 0;
 }
-
 
 /*
  * FUNCTION: __wlan_hdd_cfg80211_disconnect
@@ -12125,12 +12167,21 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
             if (rate_flags & eHAL_TX_RATE_VHT80)
             {
                 sinfo->txrate.flags |= RATE_INFO_FLAGS_VHT_MCS;
-                sinfo->txrate.flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+		sinfo->txrate.bw = RATE_INFO_BW_80;
+#else
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
+#endif
             }
             else if (rate_flags & eHAL_TX_RATE_VHT40)
             {
                 sinfo->txrate.flags |= RATE_INFO_FLAGS_VHT_MCS;
-                sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+		sinfo->txrate.bw = RATE_INFO_BW_40;
+#else
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#endif
+
             }
             else if (rate_flags & eHAL_TX_RATE_VHT20)
             {
@@ -12144,7 +12195,11 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                 sinfo->txrate.flags |= RATE_INFO_FLAGS_MCS;
                 if (rate_flags & eHAL_TX_RATE_HT40)
                 {
-                    sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+			sinfo->txrate.bw = RATE_INFO_BW_40;
+#else
+			sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#endif
                 }
             }
             if (rate_flags & eHAL_TX_RATE_SGI)
@@ -12182,11 +12237,19 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
             sinfo->txrate.flags |= RATE_INFO_FLAGS_VHT_MCS;
             if (rate_flags & eHAL_TX_RATE_VHT80)
             {
-                sinfo->txrate.flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+		sinfo->txrate.bw = RATE_INFO_BW_80;
+#else
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
+#endif
             }
             else if (rate_flags & eHAL_TX_RATE_VHT40)
             {
-                sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+		sinfo->txrate.bw = RATE_INFO_BW_40;
+#else
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#endif
             }
 #endif /* WLAN_FEATURE_11AC */
             if (rate_flags & (eHAL_TX_RATE_HT20 | eHAL_TX_RATE_HT40))
@@ -12194,7 +12257,11 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                 sinfo->txrate.flags |= RATE_INFO_FLAGS_MCS;
                 if (rate_flags & eHAL_TX_RATE_HT40)
                 {
-                    sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+			sinfo->txrate.bw = RATE_INFO_BW_40;
+#else
+			sinfo->txrate.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#endif
                 }
             }
             if (rate_flags & eHAL_TX_RATE_SGI)
