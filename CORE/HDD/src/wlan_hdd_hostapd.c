@@ -5482,10 +5482,7 @@ error_wmm_init:
     return status;
 }
 
-hdd_adapter_t* hdd_wlan_create_ap_dev(hdd_context_t *pHddCtx,
-                                      tSirMacAddr macAddr,
-                                      unsigned char name_assign_type,
-                                      tANI_U8 *iface_name )
+hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAddr, tANI_U8 *iface_name )
 {
     struct net_device *pWlanHostapdDev = NULL;
     hdd_adapter_t *pHostapdAdapter = NULL;
@@ -5493,13 +5490,11 @@ hdd_adapter_t* hdd_wlan_create_ap_dev(hdd_context_t *pHddCtx,
 
    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: iface_name = %s", __func__, iface_name);
 
-   pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t),
-                                     iface_name,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)) || defined(WITH_BACKPORTS)
-                                     name_assign_type,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
+   pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t), iface_name, NET_NAME_UNKNOWN, ether_setup, NUM_TX_QUEUES);
+#else
+   pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t), iface_name, ether_setup, NUM_TX_QUEUES);
 #endif
-                                     ether_setup,
-                                     NUM_TX_QUEUES);
 
     if (pWlanHostapdDev != NULL)
     {
