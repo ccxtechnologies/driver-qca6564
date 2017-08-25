@@ -9591,8 +9591,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                }
                else
                {
-                 cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED,
-                         NULL, 0, GFP_KERNEL);
+                  wlan_hdd_cfg80211_indicate_disconnect(pAdapter->dev, true,
+                                                        WLAN_REASON_UNSPECIFIED);
                }
            }
            else
