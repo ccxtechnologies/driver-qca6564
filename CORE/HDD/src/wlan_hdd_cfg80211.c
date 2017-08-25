@@ -109,6 +109,10 @@
 #endif
 #include "wlan_hdd_ocb.h"
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
+#define NUM_NL80211_BANDS IEEE80211_NUM_BANDS
+#endif
+
 #define g_mode_rates_size (12)
 #define a_mode_rates_size (8)
 #define FREQ_BASE_80211G          (2407)
@@ -4220,7 +4224,7 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
 
     ENTER();
 
-    for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+    for (i = 0; i < NUM_NL80211_BANDS; i++)
     {
 
         if (NULL == wiphy->bands[i])
@@ -4425,7 +4429,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
        wiphy->bands[IEEE80211_BAND_5GHZ] = &wlan_hdd_band_5_GHZ;
    }
 
-   for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+   for (i = 0; i < NUM_NL80211_BANDS; i++)
    {
 
        if (NULL == wiphy->bands[i])
@@ -14693,7 +14697,7 @@ static int __wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
     hdd_wlan_get_freq(channel, &freq);
 
 
-    for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+    for (i = 0; i < NUM_NL80211_BANDS; i++)
     {
         if (NULL == wiphy->bands[i])
         {

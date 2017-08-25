@@ -66,6 +66,10 @@
 #define IEEE80211_CHAN_NO_IBSS IEEE80211_CHAN_NO_IR
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
+#define NUM_NL80211_BANDS IEEE80211_NUM_BANDS
+#endif
+
 static v_REGDOMAIN_t temp_reg_domain = REGDOMAIN_COUNT;
 /* true if init happens thru init time driver hint */
 static v_BOOL_t init_by_driver = VOS_FALSE;
@@ -546,7 +550,7 @@ vos_reg_apply_beaconing_flags(struct wiphy *wiphy,
    struct ieee80211_channel *ch;
    unsigned int i;
 
-   for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
+   for (band = 0; band < NUM_NL80211_BANDS; band++) {
 
       if (!wiphy->bands[band])
          continue;
@@ -1385,7 +1389,7 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                   "BandCapability is set to 2G only");
 
-    for (i = 0, m = 0; i<IEEE80211_NUM_BANDS; i++)
+    for (i = 0, m = 0; i<NUM_NL80211_BANDS; i++)
     {
         /* 5G only */
         if (i == IEEE80211_BAND_2GHZ && nBandCapability == eCSR_BAND_5G)
@@ -1920,7 +1924,7 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
 #endif
     }
     m = 0;
-    for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+    for (i = 0; i < NUM_NL80211_BANDS; i++)
     {
 
         if (wiphy->bands[i] == NULL)
