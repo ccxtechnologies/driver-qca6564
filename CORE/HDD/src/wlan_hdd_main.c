@@ -7863,7 +7863,14 @@ void hdd_cfg80211_cancel_scan (hdd_adapter_t *pAdapter)
 
    spin_lock_irqsave(&hdd_context_lock, flags);
    if (pAdapter->request) {
-      cfg80211_scan_done(pAdapter->request, true);
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(4,8,0)) && !defined(WITH_BACKPORTS)
+    struct cfg80211_scan_info info = {
+        .aborted = true,
+    };
+    cfg80211_scan_done(pAdapter->request, &info);
+#else
+    cfg80211_scan_done(pAdapter->request, true);
+#endif
       pAdapter->request = NULL;
    }
    spin_unlock_irqrestore(&hdd_context_lock, flags);

@@ -9065,7 +9065,15 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     {
          aborted = true;
     }
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)) && !defined(WITH_BACKPORTS)
+    struct cfg80211_scan_info info = {
+        .aborted = aborted,
+    };
+    cfg80211_scan_done(req, &info);
+#else
     cfg80211_scan_done(req, aborted);
+#endif
 
     complete(&pScanInfo->abortscan_event_var);
 
@@ -9182,7 +9190,14 @@ static void wlan_hdd_cfg80211_scan_block_cb(struct work_struct *work)
     hddLog(LOGE,
             "%s:##In DFS Master mode. Scan aborted. Null result sent",
              __func__);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)) && !defined(WITH_BACKPORTS)
+    struct cfg80211_scan_info info = {
+        .aborted = true,
+    };
+    cfg80211_scan_done(request, &info);
+#else
     cfg80211_scan_done(request, true);
+#endif
     adapter->request = NULL;
 }
 
