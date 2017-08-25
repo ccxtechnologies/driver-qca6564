@@ -500,7 +500,11 @@ int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
       goto fail;
 
    /* Update the trans_start for this netdev */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+   netif_trans_update(dev);
+#else
    dev->trans_start = jiffies;
+#endif
    /*
     * fix up the pointers accounting for the radiotap
     * header still being in there.
