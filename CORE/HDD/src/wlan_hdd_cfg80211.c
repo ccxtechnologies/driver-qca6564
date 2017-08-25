@@ -13250,7 +13250,11 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         pPnoRequest->scanTimers.ucScanTimersCount =
                                                HDD_PNO_SCAN_TIMERS_SET_MULTIPLE;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0))
+    tempInterval = request->scan_plans[0].interval;
+#else
     tempInterval = (request->interval)/1000;
+#endif
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "Base scan interval = %d PNOScanTimerRepeatValue = %d",
               tempInterval, pHddCtx->cfg_ini->configPNOScanTimerRepeatValue);
