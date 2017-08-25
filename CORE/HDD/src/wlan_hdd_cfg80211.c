@@ -152,7 +152,7 @@
 #define IBSS_CFG_PROTECTION_ENABLE_MASK 0x8282
 
 #define HDD2GHZCHAN(freq, chan, flag)   {     \
-    .band =  IEEE80211_BAND_2GHZ, \
+    .band =  NL80211_BAND_2GHZ, \
     .center_freq = (freq), \
     .hw_value = (chan),\
     .flags = (flag), \
@@ -161,7 +161,7 @@
 }
 
 #define HDD5GHZCHAN(freq, chan, flag)   {     \
-    .band =  IEEE80211_BAND_5GHZ, \
+    .band =  NL80211_BAND_5GHZ, \
     .center_freq = (freq), \
     .hw_value = (chan),\
     .flags = (flag), \
@@ -355,7 +355,7 @@ static struct ieee80211_supported_band wlan_hdd_band_2_4_GHZ =
 {
     .channels = hdd_channels_2_4_GHZ,
     .n_channels = ARRAY_SIZE(hdd_channels_2_4_GHZ),
-    .band       = IEEE80211_BAND_2GHZ,
+    .band       = NL80211_BAND_2GHZ,
     .bitrates = g_mode_rates,
     .n_bitrates = g_mode_rates_size,
     .ht_cap.ht_supported   = 1,
@@ -385,7 +385,7 @@ static struct ieee80211_supported_band wlan_hdd_band_p2p_2_4_GHZ =
 {
     .channels = hdd_social_channels_2_4_GHZ,
     .n_channels = ARRAY_SIZE(hdd_social_channels_2_4_GHZ),
-    .band       = IEEE80211_BAND_2GHZ,
+    .band       = NL80211_BAND_2GHZ,
     .bitrates = g_mode_rates,
     .n_bitrates = g_mode_rates_size,
     .ht_cap.ht_supported   = 1,
@@ -404,7 +404,7 @@ static struct ieee80211_supported_band wlan_hdd_band_5_GHZ =
 {
     .channels = hdd_channels_5_GHZ,
     .n_channels = ARRAY_SIZE(hdd_channels_5_GHZ),
-    .band     = IEEE80211_BAND_5GHZ,
+    .band     = NL80211_BAND_5GHZ,
     .bitrates = a_mode_rates,
     .n_bitrates = a_mode_rates_size,
     .ht_cap.ht_supported   = 1,
@@ -4241,7 +4241,7 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
             channelEnabledState = vos_nv_getChannelEnabledState(
                                   band->channels[j].hw_value);
 
-            if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == eBand) // 5G only
+            if (NL80211_BAND_2GHZ == i && eCSR_BAND_5G == eBand) // 5G only
             {
 #ifdef WLAN_ENABLE_SOCIAL_CHANNELS_5G_ONLY
                 // Enable Social channels for P2P
@@ -4253,7 +4253,7 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
                     band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
                 continue;
             }
-            else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == eBand) // 2G only
+            else if (NL80211_BAND_5GHZ == i && eCSR_BAND_24 == eBand) // 2G only
             {
                 band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
                 continue;
@@ -4423,10 +4423,10 @@ int wlan_hdd_cfg80211_init(struct device *dev,
         wlan_hdd_band_5_GHZ.ht_cap.cap &= ~IEEE80211_HT_CAP_SUP_WIDTH_20_40;
     }
 
-   wiphy->bands[IEEE80211_BAND_2GHZ] = &wlan_hdd_band_2_4_GHZ;
+   wiphy->bands[NL80211_BAND_2GHZ] = &wlan_hdd_band_2_4_GHZ;
    if (true == hdd_is_5g_supported(pHddCtx))
    {
-       wiphy->bands[IEEE80211_BAND_5GHZ] = &wlan_hdd_band_5_GHZ;
+       wiphy->bands[NL80211_BAND_5GHZ] = &wlan_hdd_band_5_GHZ;
    }
 
    for (i = 0; i < NUM_NL80211_BANDS; i++)
@@ -4443,7 +4443,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
        {
            struct ieee80211_supported_band *band = wiphy->bands[i];
 
-           if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == pCfg->nBandCapability) // 5G only
+           if (NL80211_BAND_2GHZ == i && eCSR_BAND_5G == pCfg->nBandCapability) // 5G only
            {
 #ifdef WLAN_ENABLE_SOCIAL_CHANNELS_5G_ONLY
                // Enable social channels for P2P
@@ -4454,7 +4454,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                    band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
                continue;
            }
-           else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == pCfg->nBandCapability) // 2G only
+           else if (NL80211_BAND_5GHZ == i && eCSR_BAND_24 == pCfg->nBandCapability) // 2G only
            {
                band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
                continue;
@@ -8480,9 +8480,9 @@ struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_list(
     chan_no = pBssDesc->channelId;
 
     if (chan_no <= ARRAY_SIZE(hdd_channels_2_4_GHZ)) {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_2GHZ);
+        freq = ieee80211_channel_to_frequency(chan_no, NL80211_BAND_2GHZ);
     } else {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_5GHZ);
+        freq = ieee80211_channel_to_frequency(chan_no, NL80211_BAND_5GHZ);
     }
 
     chan = __ieee80211_get_channel(wiphy, freq);
@@ -8603,11 +8603,11 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
     }
 
     if (chan_no <= ARRAY_SIZE(hdd_channels_2_4_GHZ) &&
-        (wiphy->bands[IEEE80211_BAND_2GHZ] != NULL)) {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_2GHZ);
+        (wiphy->bands[NL80211_BAND_2GHZ] != NULL)) {
+        freq = ieee80211_channel_to_frequency(chan_no, NL80211_BAND_2GHZ);
     } else if ((chan_no > ARRAY_SIZE(hdd_channels_2_4_GHZ)) &&
-               (wiphy->bands[IEEE80211_BAND_5GHZ] != NULL)) {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_5GHZ);
+               (wiphy->bands[NL80211_BAND_5GHZ] != NULL)) {
+        freq = ieee80211_channel_to_frequency(chan_no, NL80211_BAND_5GHZ);
     } else {
         hddLog(LOGE, FL("Invalid chan_no %d"), chan_no);
         kfree(mgmt);
@@ -9782,10 +9782,10 @@ static bool wlan_hdd_sta_p2pgo_concur_handle(hdd_context_t *hdd_ctx,
               WLAN_HDD_GET_AP_CTX_PTR(p2pgo_adapter)->operatingChannel;
             if (p2pgo_channel_num <= ARRAY_SIZE(hdd_channels_2_4_GHZ)) {
                 freq = ieee80211_channel_to_frequency(p2pgo_channel_num,
-                                                   IEEE80211_BAND_2GHZ);
+                                                   NL80211_BAND_2GHZ);
             } else {
                 freq = ieee80211_channel_to_frequency(p2pgo_channel_num,
-                                                   IEEE80211_BAND_5GHZ);
+                                                   NL80211_BAND_5GHZ);
             }
             vos_mem_zero(&hdd_avoid_freq_list,
                          sizeof(hdd_avoid_freq_list));

@@ -608,7 +608,7 @@ vos_reg_apply_active_scan_flags(struct wiphy *wiphy,
    struct ieee80211_channel *ch;
    const struct ieee80211_reg_rule *reg_rule;
 
-   sband = wiphy->bands[IEEE80211_BAND_2GHZ];
+   sband = wiphy->bands[NL80211_BAND_2GHZ];
    if (!sband)
       return;
 
@@ -668,10 +668,10 @@ static void vos_reg_apply_radar_flags(struct wiphy *wiphy)
    struct ieee80211_channel *ch;
    unsigned int i;
 
-   if (!wiphy->bands[IEEE80211_BAND_5GHZ])
+   if (!wiphy->bands[NL80211_BAND_5GHZ])
       return;
 
-   sband = wiphy->bands[IEEE80211_BAND_5GHZ];
+   sband = wiphy->bands[NL80211_BAND_5GHZ];
 
    for (i = 0; i < sband->n_channels; i++) {
       ch = &sband->channels[i];
@@ -1392,11 +1392,11 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
     for (i = 0, m = 0; i<NUM_NL80211_BANDS; i++)
     {
         /* 5G only */
-        if (i == IEEE80211_BAND_2GHZ && nBandCapability == eCSR_BAND_5G)
+        if (i == NL80211_BAND_2GHZ && nBandCapability == eCSR_BAND_5G)
             continue;
 
         /* 2G only */
-        else if (i == IEEE80211_BAND_5GHZ && nBandCapability == eCSR_BAND_24)
+        else if (i == NL80211_BAND_5GHZ && nBandCapability == eCSR_BAND_24)
             continue;
 
         if (wiphy->bands[i] == NULL)
@@ -1785,18 +1785,18 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         (request->initiator == NL80211_REGDOM_SET_BY_USER))
     {
         if (pHddCtx->cfg_ini->gEnableStrictRegulatoryForFCC &&
-            wiphy->bands[IEEE80211_BAND_5GHZ])
+            wiphy->bands[NL80211_BAND_5GHZ])
         {
-            for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ]->n_channels; j++)
+            for (j=0; j<wiphy->bands[NL80211_BAND_5GHZ]->n_channels; j++)
             {
                 // UNII-1 band channels are passive when domain is FCC.
-                if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
-                     wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
-                     wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
-                     wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
+                if ((wiphy->bands[NL80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
+                     wiphy->bands[NL80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
+                     wiphy->bands[NL80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
+                     wiphy->bands[NL80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
                     (request->alpha2[0]== 'U' && request->alpha2[1]=='S'))
                 {
-                    wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+                    wiphy->bands[NL80211_BAND_5GHZ]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
                 }
             }
         }
