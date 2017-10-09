@@ -11023,7 +11023,7 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     }
 
 disconnected:
-    hdd_connSetConnectionState(pAdapter,
+    hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
                                 eConnectionState_NotConnected);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
     /* Sending disconnect event to userspace for kernel version < 3.11
