@@ -15591,9 +15591,17 @@ wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
             if (!ap)
                 goto fail;
 
-            if (nla_put_u64(skb,
+            if (
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
+                nla_put_u64_64bit(skb,
+                 QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
+                 pData->ap[i].ts,
+                 QCA_WLAN_VENDOR_ATTR_EXTSCAN_PAD) ||
+#else
+                nla_put_u64(skb,
                  QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
                  pData->ap[i].ts) ||
+#endif
                 nla_put(skb,
                  QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_SSID,
                  sizeof(pData->ap[i].ssid),
@@ -15721,9 +15729,17 @@ wlan_hdd_cfg80211_extscan_hotlist_match_ind(void *ctx,
             if (!ap)
                 goto fail;
 
-            if (nla_put_u64(skb,
-                   QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
-                    pData->ap[i].ts) ||
+            if (
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
+                nla_put_u64_64bit(skb,
+                     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
+                     pData->ap[i].ts,
+                     QCA_WLAN_VENDOR_ATTR_EXTSCAN_PAD) ||
+#else
+                nla_put_u64(skb,
+                     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
+                     pData->ap[i].ts) ||
+#endif
                 nla_put(skb,
                      QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_SSID,
                      sizeof(pData->ap[i].ssid),
@@ -15936,9 +15952,14 @@ wlan_hdd_cfg80211_extscan_full_scan_result_event(void *ctx,
 
     if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_REQUEST_ID,
                     pData->requestId) ||
-        nla_put_u64(skb,
-                   QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
-                   pData->ap.ts) ||
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
+        nla_put_u64_64bit(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
+                    pData->ap.ts,
+                    QCA_WLAN_VENDOR_ATTR_EXTSCAN_PAD) ||
+#else
+        nla_put_u64(skb,QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_TIME_STAMP,
+                    pData->ap.ts) ||
+#endif
         nla_put(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_SSID,
                     sizeof(pData->ap.ssid),
                     pData->ap.ssid) ||
