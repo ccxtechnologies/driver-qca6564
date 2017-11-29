@@ -40,6 +40,10 @@
 #include "schApi.h"
 #include "wma.h"
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
+#define NUM_NL80211_BANDS IEEE80211_NUM_BANDS
+#endif
+
 /* Structure definitions for WLAN_SET_DOT11P_CHANNEL_SCHED */
 #define AIFSN_MIN		(2)
 #define AIFSN_MAX		(15)
@@ -244,7 +248,7 @@ static int dot11p_validate_channel(struct wiphy *wiphy,
 	struct ieee80211_supported_band *current_band;
 	struct ieee80211_channel *current_channel;
 
-	for (band_idx = 0; band_idx < IEEE80211_NUM_BANDS; band_idx++) {
+	for (band_idx = 0; band_idx < NUM_NL80211_BANDS; band_idx++) {
 		current_band = wiphy->bands[band_idx];
 		if (!current_band)
 			continue;

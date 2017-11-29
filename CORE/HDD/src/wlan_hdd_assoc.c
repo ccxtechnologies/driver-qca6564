@@ -934,31 +934,18 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
         if (sendDisconInd) {
             /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
             if (eCSR_ROAM_LOSTLINK == roamStatus)
-            {
-               if (pRoamInfo->reasonCode ==
-                               eSIR_MAC_PEER_STA_REQ_LEAVING_BSS_REASON)
-                       pr_info(
-                       "wlan: disconnected due to poor signal, rssi is %d dB\n",
-                       pRoamInfo->rxRssi);
                wlan_hdd_cfg80211_indicate_disconnect(dev, true,
-                                                     WLAN_REASON_UNSPECIFIED);
-            }
+                                                     pRoamInfo->reasonCode);
             else
                wlan_hdd_cfg80211_indicate_disconnect(dev, true,
                                                      WLAN_REASON_UNSPECIFIED);
-
             hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-                   FL("sent disconnected event to nl80211, reason code %d"),
-                      (eCSR_ROAM_LOSTLINK == roamStatus) ?
-                      pRoamInfo->reasonCode : WLAN_REASON_UNSPECIFIED);
+                               FL("sent disconnected event to nl80211"));
         }
 
         if ((pHddCtx->isLoadInProgress != TRUE) &&
             (pHddCtx->isUnloadInProgress != TRUE))
         {
-            hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-                    "%s: sent disconnected event to nl80211",
-                    __func__);
 #ifdef WLAN_FEATURE_P2P_DEBUG
             if(pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
             {
@@ -977,19 +964,6 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             }
 #endif
 
-            /*Only send indication to kernel if not initiated by kernel*/
-            if ( sendDisconInd )
-            {
-                /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
-                if( eCSR_ROAM_LOSTLINK == roamStatus )
-                {
-                    cfg80211_disconnected(dev, pRoamInfo->reasonCode, NULL, 0, GFP_KERNEL);
-                }
-                else
-                {
-                    cfg80211_disconnected(dev, WLAN_REASON_UNSPECIFIED, NULL, 0, GFP_KERNEL);
-                 }
-            }
             //If the Device Mode is Station
             // and the P2P Client is Connected
             //Enable BMPS
@@ -2606,8 +2580,9 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
   Return: VOS_STATUS
 
   ===========================================================================*/
-VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
-                                    tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig)
+VOS_STATUS hdd_roamRegisterTDLSSTA(hdd_adapter_t *pAdapter,
+                                   const tANI_U8 *peerMac, tANI_U16 staId,
+                                   tANI_U8 ucastSig)
 {
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;

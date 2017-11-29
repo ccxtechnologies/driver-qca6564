@@ -628,7 +628,7 @@ static void wlan_hdd_restart_sap(hdd_adapter_t *ap_adapter)
         hdd_cleanup_actionframe(pHddCtx, ap_adapter);
 
         pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(ap_adapter);
-        vos_event_reset(&pHostapdState->vosEvent);
+        vos_event_reset(&pHostapdState->stop_bss_event);
 
         if ( VOS_STATUS_SUCCESS == WLANSAP_StopBss(
 #ifdef WLAN_FEATURE_MBSSID
@@ -637,8 +637,8 @@ static void wlan_hdd_restart_sap(hdd_adapter_t *ap_adapter)
             (WLAN_HDD_GET_CTX(ap_adapter))->pvosContext
 #endif
         )) {
-            vos_status = vos_wait_single_event(&pHostapdState->vosEvent, 10000);
-
+            vos_status = vos_wait_single_event(&pHostapdState->stop_bss_event,
+                                               10000);
             if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
                 hddLog(LOGE, FL("SAP Stop Failed"));
                 goto end;
@@ -7863,7 +7863,14 @@ void hdd_cfg80211_cancel_scan (hdd_adapter_t *pAdapter)
 
    spin_lock_irqsave(&hdd_context_lock, flags);
    if (pAdapter->request) {
-      cfg80211_scan_done(pAdapter->request, true);
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(4,8,0)) && !defined(WITH_BACKPORTS)
+    struct cfg80211_scan_info info = {
+        .aborted = true,
+    };
+    cfg80211_scan_done(pAdapter->request, &info);
+#else
+    cfg80211_scan_done(pAdapter->request, true);
+#endif
       pAdapter->request = NULL;
    }
    spin_unlock_irqrestore(&hdd_context_lock, flags);
@@ -8272,18 +8279,23 @@ void hdd_set_station_ops( struct net_device *pWlanDev )
       pWlanDev->netdev_ops = &wlan_drv_ops;
 }
 
-static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr macAddr, const char* name )
+static hdd_adapter_t* hdd_alloc_station_adapter(hdd_context_t *pHddCtx,
+                                                tSirMacAddr macAddr,
+                                                unsigned char name_assign_type,
+                                                const char* name)
 {
    struct net_device *pWlanDev = NULL;
    hdd_adapter_t *pAdapter = NULL;
    /*
     * cfg80211 initialization and registration....
     */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
-   pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ), name, NET_NAME_UNKNOWN, ether_setup, NUM_TX_QUEUES);
-#else
-   pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ), name, ether_setup, NUM_TX_QUEUES);
+   pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ),
+                              name,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)) || defined(WITH_BACKPORTS)
+                              name_assign_type,
 #endif
+                              ether_setup,
+                              NUM_TX_QUEUES);
 
    if(pWlanDev != NULL)
    {
@@ -8954,6 +8966,7 @@ VOS_STATUS hdd_check_for_existing_macaddr( hdd_context_t *pHddCtx,
 
 hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
                                  const char *iface_name, tSirMacAddr macAddr,
+                                 unsigned char name_assign_type,
                                  tANI_U8 rtnl_held )
 {
    hdd_adapter_t *pAdapter = NULL;
@@ -9021,7 +9034,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
       case WLAN_HDD_P2P_DEVICE:
       case WLAN_HDD_OCB:
       {
-         pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
+         pAdapter = hdd_alloc_station_adapter(pHddCtx, macAddr,
+                                              name_assign_type,
+                                              iface_name);
 
          if( NULL == pAdapter )
          {
@@ -9097,7 +9112,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
       case WLAN_HDD_P2P_GO:
       case WLAN_HDD_SOFTAP:
       {
-         pAdapter = hdd_wlan_create_ap_dev( pHddCtx, macAddr, (tANI_U8 *)iface_name );
+         pAdapter = hdd_wlan_create_ap_dev(pHddCtx, macAddr,
+                                           name_assign_type,
+                                           (tANI_U8 *)iface_name );
          if( NULL == pAdapter )
          {
             hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -9130,7 +9147,10 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
       }
       case WLAN_HDD_MONITOR:
       {
-         pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
+         pAdapter = hdd_alloc_station_adapter(pHddCtx, macAddr,
+                                              name_assign_type,
+                                              iface_name);
+
          if( NULL == pAdapter )
          {
             hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -9170,7 +9190,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          break;
       case WLAN_HDD_FTM:
       {
-         pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
+         pAdapter = hdd_alloc_station_adapter(pHddCtx, macAddr,
+                                              name_assign_type,
+                                              iface_name );
 
          if( NULL == pAdapter )
          {
@@ -9591,8 +9613,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                }
                else
                {
-                 cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED,
-                         NULL, 0, GFP_KERNEL);
+                  wlan_hdd_cfg80211_indicate_disconnect(pAdapter->dev, true,
+                                                        WLAN_REASON_UNSPECIFIED);
                }
            }
            else
@@ -9707,7 +9729,7 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
             hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
             hdd_hostapd_state_t *pHostapdState =
                   WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
-            vos_event_reset(&pHostapdState->vosEvent);
+            vos_event_reset(&pHostapdState->stop_bss_event);
 
             //Stop Bss.
 #ifdef WLAN_FEATURE_MBSSID
@@ -9718,8 +9740,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 
             if (VOS_IS_STATUS_SUCCESS(status))
             {
-               status = vos_wait_single_event(&pHostapdState->vosEvent, 10000);
-
+               status = vos_wait_single_event(&pHostapdState->stop_bss_event,
+                                              10000);
                if (!VOS_IS_STATUS_SUCCESS(status))
                {
                   hddLog(LOGE, "%s: failure waiting for WLANSAP_StopBss %d",
@@ -12134,11 +12156,15 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
 
    if (pHddCtx->cfg_ini->dot11p_mode == WLAN_HDD_11P_STANDALONE) {
        /* Create only 802.11p interface */
-      pAdapter = hdd_open_adapter(pHddCtx, WLAN_HDD_OCB,
-          "wlanocb%d", wlan_hdd_get_intf_addr(pHddCtx), rtnl_lock_enable);
+      pAdapter = hdd_open_adapter(pHddCtx, WLAN_HDD_OCB,"wlanocb%d",
+                                  wlan_hdd_get_intf_addr(pHddCtx),
+                                  NET_NAME_UNKNOWN,
+                                  rtnl_lock_enable);
    } else {
-      pAdapter = hdd_open_adapter( pHddCtx, WLAN_HDD_INFRA_STATION, "wlan%d",
-          wlan_hdd_get_intf_addr(pHddCtx), rtnl_lock_enable );
+      pAdapter = hdd_open_adapter(pHddCtx, WLAN_HDD_INFRA_STATION, "wlan%d",
+                                  wlan_hdd_get_intf_addr(pHddCtx),
+                                  NET_NAME_UNKNOWN,
+                                  rtnl_lock_enable);
 
 #ifdef WLAN_OPEN_P2P_INTERFACE
       /* Open P2P device interface */
@@ -12165,8 +12191,9 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
          }
 
          pP2pAdapter = hdd_open_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE, "p2p%d",
-                           &pHddCtx->p2pDeviceAddress.bytes[0],
-                           rtnl_lock_enable);
+                                        &pHddCtx->p2pDeviceAddress.bytes[0],
+                                        NET_NAME_UNKNOWN,
+                                        rtnl_lock_enable);
 
          if (NULL == pP2pAdapter) {
             hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -12179,9 +12206,10 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       /* Open 802.11p Interface */
       if (pAdapter != NULL) {
          if (pHddCtx->cfg_ini->dot11p_mode == WLAN_HDD_11P_CONCURRENT) {
-            dot11_adapter = hdd_open_adapter(pHddCtx, WLAN_HDD_OCB,
-                       "wlanocb%d", wlan_hdd_get_intf_addr(pHddCtx),
-                       rtnl_lock_enable);
+            dot11_adapter = hdd_open_adapter(pHddCtx, WLAN_HDD_OCB, "wlanocb%d",
+                                             wlan_hdd_get_intf_addr(pHddCtx),
+                                             NET_NAME_UNKNOWN,
+                                             rtnl_lock_enable);
 
             if (dot11_adapter == NULL) {
                hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -14457,7 +14485,8 @@ void wlan_hdd_stop_sap(hdd_adapter_t *ap_adapter)
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
                   FL("Now doing SAP STOPBSS"));
         if (VOS_STATUS_SUCCESS == WLANSAP_StopBss(hdd_ap_ctx->sapContext)) {
-            vos_status = vos_wait_single_event(&hostapd_state->vosEvent, 10000);
+            vos_status = vos_wait_single_event(&hostapd_state->stop_bss_event,
+                                               10000);
             if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                           FL("SAP Stop Failed"));
