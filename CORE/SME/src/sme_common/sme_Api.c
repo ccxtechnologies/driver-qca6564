@@ -281,6 +281,7 @@ void purgeSmeSessionCmdList(tpAniSirGlobal pMac, tANI_U32 sessionId,
     tListElem *pEntry, *pNext;
     tSmeCmd *pCommand;
     tDblLinkList localList;
+    eHalStatus status;
 
     vos_mem_zero(&localList, sizeof(tDblLinkList));
     if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
@@ -306,12 +307,19 @@ void purgeSmeSessionCmdList(tpAniSirGlobal pMac, tANI_U32 sessionId,
     }
     csrLLUnlock(pList);
 
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if (!HAL_STATUS_SUCCESS(status))
+        return;
+
     while( (pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)) )
     {
         pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+        pCommand->u.scanCmd.callback = NULL;
+        pCommand->u.scanCmd.pContext = NULL;
         smeAbortCommand(pMac, pCommand, eANI_BOOLEAN_TRUE);
     }
     csrLLClose(&localList);
+    sme_ReleaseGlobalLock( &pMac->sme );
 }
 
 
