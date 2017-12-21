@@ -679,9 +679,14 @@ end:
 
 static int hdd_netdev_notifier_call(struct notifier_block * nb,
                                          unsigned long state,
-                                         void *ndev)
+                                         void *data)
 {
-   struct net_device *dev = ndev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0))
+   struct netdev_notifier_info *dev_notif_info = data;
+   struct net_device *dev = dev_notif_info->dev;
+#else
+   struct net_device *dev = data;
+#endif
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx;
 
@@ -691,11 +696,15 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
       return NOTIFY_DONE;
 
    if ((pAdapter->magic != WLAN_HDD_ADAPTER_MAGIC) &&
-      (pAdapter->dev != dev))
+      (pAdapter->dev != dev)) {
+      hddLog(LOGE, FL("device adapter is not matching!!!"));
       return NOTIFY_DONE;
+   }
 
-   if (!dev->ieee80211_ptr)
+   if (!dev->ieee80211_ptr) {
+      hddLog(LOGE, FL("ieee80211_ptr is NULL!!!"));
       return NOTIFY_DONE;
+   }
 
    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    if (NULL == pHddCtx)
@@ -8809,6 +8818,11 @@ VOS_STATUS hdd_enable_bmps_imps(hdd_context_t *pHddCtx)
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS;
 
+   if (0 != wlan_hdd_validate_context(pHddCtx)) {
+       hddLog(LOGE, FL("HDD context is not valid"));
+       return VOS_STATUS_E_PERM;
+   }
+
    if(pHddCtx->cfg_ini->fIsBmpsEnabled)
    {
       sme_EnablePowerSave(pHddCtx->hHal, ePMC_BEACON_MODE_POWER_SAVE);
@@ -12882,8 +12896,10 @@ static void hdd_driver_exit(void)
          }
       }
 
+      rtnl_lock();
       pHddCtx->isUnloadInProgress = TRUE;
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+      rtnl_unlock();
    }
 
    vos_wait_for_work_thread_completion(__func__);
