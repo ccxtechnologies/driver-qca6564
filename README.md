@@ -8,26 +8,58 @@ The Linux driver is maintained upstream at [coreaurora](https://source.codeauror
 This repository is a fork which maintains patches for Digi Embedded product
 range.
 
-Compiling the driver
+Firmware / Configuration Files
+------------------------------
+This driver requires the QCA6564 firmware, which is avlaible in a spereate repository.
+
+It requires the firmware_bin/WCNSS_cfg.dat and firmware_bin/WCNSS_qcom_cfg.ini configuration files from this repository
+to be copied into /lib/firmware/wlan on the target system, and renamed cfg.dat, qcom_cfg.ini.
+
+It also requires a wlan_mac.bin file on the target, in the /lib/firmware/wlan directory, the format is:
+Intf0MacAddress=<MAC>, ie. Intf0MacAddress=0004F3FFFFFB
+
+Compiling the Driver
 --------------------
-The QCA6564 is meant to be used by Digi Embedded Yocto, which includes
-recipes to build the package. It's also part of the default images generated
-by Digi Embedded Yocto.
 
-It can be also compiled using a Yocto based toolchain. In that case, make
-sure to source the corresponding toolchain of the platform you want to build
-the connector for, e.g:
+Example of compiling with buildroot, showing the required configuration settings to build for the Digi imx6ul SOM:
 
 ```
-. <DEY-toolchain-path>/environment-setup-cortexa7hf-vfp-neon-dey-linux-gnueabi
-QCA_EXTRA_FLAGS="CONFIG_CLD_HL_SDIO_CORE=y CONFIG_LINUX_QCMBR=y WLAN_OPEN_SOURCE=1 CONFIG_NON_QC_PLATFORM=y"
-make -j4 ${QCA_EXTRA_FLAGS} M=${QCA_SRC} KLIB_BUILD=${KERNEL_SRC} KERNEL_PATH=${KERNEL_SRC} KERNEL_SRC=${KERNEL_SRC}
+################################################################################                                                              
+#                                                                                                                                             
+# driver-qca6564                                                                                                                              
+#                                                                                                                                             
+################################################################################                                                              
+                                                                                                                                              
+DRIVER_QCA6564_VERSION = 97d8df0b97e236b21b3bd83fca63a2dc90e85cee                                                                             
+DRIVER_QCA6564_SITE = $(call github,ccxtechnologies,driver-qca6564,$(DRIVER_QCA6564_VERSION))                                                 
+DRIVER_QCA6564_LICENSE = ISC, BSD-like, GPL-2.0+                                                                                              
+                                                                                                                                              
+DRIVER_QCA6564_MODULE_MAKE_OPTS = WLAN_ROOT=$(@D)                                                                                             
+DRIVER_QCA6564_MODULE_MAKE_OPTS += MODNAME=wlan                                                                                               
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_QCA_WIFI_ISOC=0                                                                                     
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_QCA_WIFI_2_0=1                                                                                      
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_QCA_CLD_WLAN=m                                                                                      
+DRIVER_QCA6564_MODULE_MAKE_OPTS += WLAN_OPEN_SOURCE=1                                                                                         
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_CLD_HL_SDIO_CORE=y                                                                                  
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_LINUX_QCMBR=y                                                                                       
+DRIVER_QCA6564_MODULE_MAKE_OPTS += WLAN_OPEN_SOURCE=1                                                                                         
+DRIVER_QCA6564_MODULE_MAKE_OPTS += CONFIG_NON_QC_PLATFORM=y                                                                                   
+DRIVER_QCA6564_MODULE_MAKE_OPTS += BUILD_DEBUG_VERSION=0                                                                                      
+                                                                                                                                              
+define DRIVER_QCA6564_INSTALL_MODPROBE                                                                                                        
+    mkdir -p $(TARGET_DIR)/etc/modprobe.d                                                                                                     
+    $(INSTALL) -D -m 644 $(@D)/modprobe-qualcomm.conf $(TARGET_DIR)/etc/modprobe.d/qualcomm.conf                                              
+                                                                                                                                              
+    mkdir -p $(TARGET_DIR)/lib/firmware/wlan                                                                                                  
+    install -m 0644 $(@D)/firmware_bin/WCNSS_cfg.dat $(TARGET_DIR)/lib/firmware/wlan/cfg.dat                                                  
+    install -m 0644 $(@D)/firmware_bin/WCNSS_qcom_cfg.ini $(TARGET_DIR)/lib/firmware/wlan/qcom_cfg.ini                                        
+                                                                                                                                              
+endef                                                                                                                                         
+DRIVER_QCA6564_POST_INSTALL_TARGET_HOOKS += DRIVER_QCA6564_INSTALL_MODPROBE                                                                   
+                                                                                                                                              
+$(eval $(kernel-module))                                                                                                                      
+$(eval $(generic-package))  
 ```
-
-Where ${KERNEL_SRC} is the patch to the configured and compiled Linux kernel
-source the module will be loaded into.
-
-More information about [Digi Embedded Yocto](https://github.com/digi-embedded/meta-digi).
 
 License
 -------
